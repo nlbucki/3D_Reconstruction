@@ -119,7 +119,7 @@ if __name__ == '__main__':
 
     K = np.load('calibration.npz')['K']
 
-    points,err,R,t = get_3d_points(img1, img2, K, plotMatches=True)[1:]
+    points,err,R,t = get_3d_points(img1, img2, K, plotMatches=False)
     np.savez('reconstruction_test', points=points, error=err, K=K, R=R, t=t)
 
     fig = plt.figure()
