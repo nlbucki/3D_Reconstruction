@@ -21,7 +21,6 @@ for fname in images:
     gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
     smallGray = cv2.resize(gray, (1500,1000))
 
-
     # Find the chess board corners
     ret, corners = cv2.findChessboardCorners(smallGray, (8,6),None)
 
@@ -33,17 +32,15 @@ for fname in images:
         cv2.cornerSubPix(gray, corners,(11,11),(-1,-1),criteria)
         imgpoints.append(corners)
 
-    cv2.namedWindow('img', cv2.WINDOW_NORMAL)
-    cv2.drawChessboardCorners(img, (8,6), corners, ret)
-    cv2.imshow('img', img)
-    cv2.resizeWindow('img', 1500, 1000)
-    cv2.waitKey()
+    # cv2.namedWindow('img', cv2.WINDOW_NORMAL)
+    # cv2.drawChessboardCorners(img, (8,6), corners, ret)
+    # cv2.imshow('img', img)
+    # cv2.resizeWindow('img', 1500, 1000)
+    # cv2.waitKey()
  
 cv2.destroyAllWindows()
 
-ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1],None,None)
-print ret
+error, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1],None,None)
+np.savez('calibration.npz', K=mtx, error=error)
+print error
 print mtx
-print dist
-print rvecs
-print tvecs
