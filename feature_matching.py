@@ -10,27 +10,26 @@ def find_3d_points(P1, P2, matches):
     numMatches = matches.shape[0]
     points_3d = np.zeros((numMatches,3))
     errs = np.zeros((numMatches,1))
-    for m in matches:
+    for i,m in enumerate(matches):
         A = np.zeros((4, 4)) 
-        A[1,:] = np.array([P1[0,0]-m[0][0]*P1[2,0], P1[0,1]-m[0][0]*P1[2,1],
+        A[0,:] = np.array([P1[0,0]-m[0][0]*P1[2,0], P1[0,1]-m[0][0]*P1[2,1],
                           P1[0,2]-m[0][0]*P1[2,2], P1[0,3]-m[0][0]*P1[2,3]])
-        # A(2,:) = [P1(2,1)-matches(i,2)*P1(3,1), P1(2,2)-matches(i,2)*P1(3,2), ...
-        #           P1(2,3)-matches(i,2)*P1(3,3), P1(2,4)-matches(i,2)*P1(3,4)];
-        # A(3,:) = [P2(1,1)-matches(i,3)*P2(3,1), P2(1,2)-matches(i,3)*P2(3,2), ...
-        #           P2(1,3)-matches(i,3)*P2(3,3), P2(1,4)-matches(i,3)*P2(3,4)];
-        # A(4,:) = [P2(2,1)-matches(i,4)*P2(3,1), P2(2,2)-matches(i,4)*P2(3,2), ...
-        #           P2(2,3)-matches(i,4)*P2(3,3), P2(2,4)-matches(i,4)*P2(3,4)];
-    #     [U,S,V] = svd(A);
-    #     x = V(:,end)/V(4,end);
-    #     points_3d(i,:) = x(1:3);
-    #     rec_err_1 = sqrt((dot(P1(1,:),x)/dot(P1(3,:),x) - matches(i,1))^2 ...
-    #                 + (dot(P1(2,:),x)/dot(P1(3,:),x) - matches(i,2))^2);
-    #     rec_err_2 = sqrt((dot(P2(1,:),x)/dot(P2(3,:),x) - matches(i,3))^2 ...
-    #                 + (dot(P2(2,:),x)/dot(P2(3,:),x) - matches(i,4))^2);
-    #     errs(i) = 0.5*(rec_err_1 + rec_err_2);
-    # end
-    # err = mean(errs);
-    return 0,0
+        A[1,:] = np.array([P1[1,0]-m[0][1]*P1[2,0], P1[1,1]-m[0][1]*P1[2,1],
+                           P1[1,2]-m[0][1]*P1[2,2], P1[1,3]-m[0][1]*P1[2,3]])
+        A[2,:] = np.array([P2[0,0]-m[1][0]*P2[2,0], P2[0,1]-m[1][0]*P2[2,1],
+                           P2[0,2]-m[1][0]*P2[2,2], P2[0,3]-m[1][0]*P2[2,3]])
+        A[3,:] = np.array([P2[1,0]-m[1][1]*P2[2,0], P2[1,1]-m[1][1]*P2[2,1],
+                           P2[1,2]-m[1][1]*P2[2,2], P2[1,3]-m[1][1]*P2[2,3]])
+        U,S,Vh = np.linalg.svd(A)
+        x = Vh.T[:,3]/Vh.T[3,3]
+        points_3d[i,:] = x[0:3]
+        rec_err_1 = np.sqrt((P1[0,:].dot(x)/P1[2,:].dot(x) - m[0][0])**2
+                         + (P1[1,:].dot(x)/P1[2,:].dot(x) - m[0][1])**2)
+        rec_err_2 = np.sqrt((P2[0,:].dot(x)/P2[2,:].dot(x) - m[1][0])**2
+                         + (P2[1,:].dot(x)/P2[2,:].dot(x) - m[1][1])**2)
+        errs[i] = 0.5*(rec_err_1 + rec_err_2)
+    err = np.mean(errs)
+    return points_3d, err
 
 # Load images and calibration matrix
 img1 = cv2.imread('images/Reconstruction_Test/DSC_0466.JPG',0)      # queryImage
@@ -92,14 +91,15 @@ num_points = np.zeros((t.shape[0],R.shape[0]))
 # the reconstruction error for all combinations
 errs = np.full((t.shape[0],R.shape[0]), np.inf)
 
-for ti in t:
-    for ri in R:
+for i,ti in enumerate(t):
+    for j,ri in enumerate(R):
         P2 = np.matmul(K, np.concatenate((ri,ti.reshape((3,1))), axis=1))      
         points_3d, err = find_3d_points(P1,P2,matches)
         
-#         Z1 = points_3d(:,3);
-#         Z2 = R2(3,:)*points_3d'+t2(3);Z2 = Z2';
-#         num_points(ti,ri) = sum(Z1>0 & Z2>0);
+        Z1 = points_3d[:,2]
+        Z2 = ri[2,:].dot(points_3d.T)+ti[2]
+        Z2 = Z2.T
+        num_points[i,j] = np.sum(np.logical_and(Z1>0, Z2>0))
         
                 
 #     end
