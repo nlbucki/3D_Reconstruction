@@ -41,6 +41,7 @@ for fname in images:
 cv2.destroyAllWindows()
 
 error, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1],None,None)
-np.savez('calibration.npz', K=mtx, error=error)
+np.savez('calibration.npz', error=error, K=mtx, distortion=dist)
 print error
 print mtx
+print dist

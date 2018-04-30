@@ -111,8 +111,8 @@ def get_3d_points(im1, im2, K, plotMatches=False):
 if __name__ == '__main__':
 
     # Load images and calibration matrix
-    img1 = cv2.imread('images/Reconstruction_Test/DSC_0466.JPG',0)
-    img2 = cv2.imread('images/Reconstruction_Test/DSC_0467.JPG',0)
+    img1 = cv2.imread('images/Transparent_Objects/boot/DSC_0473.JPG',0)
+    img2 = cv2.imread('images/Transparent_Objects/boot/DSC_0474.JPG',0)
     img1 = cv2.resize(img1,(1500,1000))
     img2 = cv2.resize(img2,(1500,1000))
 
