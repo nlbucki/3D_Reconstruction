@@ -106,20 +106,21 @@ def get_3d_points(im1, im2, K, plotMatches=False):
     P2 = np.matmul(K, np.concatenate((R[ri],t[ti].reshape((3,1))), axis=1))
 
     # Compute the 3D points with the final P2
-    return find_3d_points(P1,P2,matches)
+    points, err = find_3d_points(P1,P2,matches)
+    return points, err, R[ri], t[ti]
 
 if __name__ == '__main__':
 
     # Load images and calibration matrix
-    img1 = cv2.imread('images/Transparent_Objects/boot/DSC_0473.JPG',0)
-    img2 = cv2.imread('images/Transparent_Objects/boot/DSC_0474.JPG',0)
+    img1 = cv2.imread('images/Reconstruction_Test/DSC_0466.JPG',0)
+    img2 = cv2.imread('images/Reconstruction_Test/DSC_0467.JPG',0)
     img1 = cv2.resize(img1,(1500,1000))
     img2 = cv2.resize(img2,(1500,1000))
 
     K = np.load('calibration.npz')['K']
 
-    points,err = get_3d_points(img1, img2, K, plotMatches=True)
-    np.savez('reconstruction_test', points=points)
+    points,err,R,t = get_3d_points(img1, img2, K, plotMatches=True)[1:]
+    np.savez('reconstruction_test', points=points, error=err, K=K, R=R, t=t)
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
