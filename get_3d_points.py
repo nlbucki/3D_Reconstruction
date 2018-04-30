@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import silx.image.sift as sift
 from matplotlib import pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 # Get 3d points for given matches and matrices, return 3d points and 
 # reconstruction error
@@ -34,9 +35,9 @@ def find_3d_points(P1, P2, matches):
 def get_3d_points(im1, im2, K, plotMatches=False):
 
     # Initiate SIFT detector get keypoints in images
-    siftp = sift.SiftPlan(img1.shape, img1.dtype, devicetype="GPU")
+    siftp = sift.SiftPlan(img1.shape, img1.dtype, devicetype="CPU")
     kp1 = siftp.keypoints(img1)
-    siftp = sift.SiftPlan(img2.shape, img2.dtype, devicetype="GPU")
+    siftp = sift.SiftPlan(img2.shape, img2.dtype, devicetype="CPU")
     kp2 = siftp.keypoints(img2)
 
     # Extract descriptors from keypoints
@@ -117,4 +118,10 @@ if __name__ == '__main__':
 
     K = np.load('calibration.npz')['K']
 
-    points = get_3d_points(img1, img2, K)
+    points,err = get_3d_points(img1, img2, K, plotMatches=True)
+    np.savez('reconstruction_test', points=points)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(points[:,0], points[:,1], zs=points[:,2])
+    plt.show()
