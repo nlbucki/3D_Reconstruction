@@ -18,25 +18,23 @@ images = glob.glob('./images/Camera_Calibration/*.JPG')
 for fname in images:
     print fname
     img = cv2.imread(fname)
+    img = cv2.resize(img, (1500,1000))
     gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-    smallGray = cv2.resize(gray, (1500,1000))
 
     # Find the chess board corners
-    ret, corners = cv2.findChessboardCorners(smallGray, (8,6),None)
+    ret, corners = cv2.findChessboardCorners(gray, (8,6),None)
 
     # If found, add object points, image points (after refining them)
     if ret == True:
         objpoints.append(objp)
 
-        corners = 4*corners
         cv2.cornerSubPix(gray, corners,(11,11),(-1,-1),criteria)
         imgpoints.append(corners)
 
-    # cv2.namedWindow('img', cv2.WINDOW_NORMAL)
-    # cv2.drawChessboardCorners(img, (8,6), corners, ret)
-    # cv2.imshow('img', img)
-    # cv2.resizeWindow('img', 1500, 1000)
-    # cv2.waitKey()
+    cv2.namedWindow('img', cv2.WINDOW_NORMAL)
+    cv2.drawChessboardCorners(img, (8,6), corners, ret)
+    cv2.imshow('img', img)
+    cv2.waitKey()
  
 cv2.destroyAllWindows()
 

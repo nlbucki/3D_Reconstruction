@@ -35,10 +35,10 @@ def find_3d_points(P1, P2, matches):
 def get_3d_points(im1, im2, K, plotMatches=False):
 
     # Initiate SIFT detector get keypoints in images
-    siftp = sift.SiftPlan(img1.shape, img1.dtype, devicetype="CPU")
-    kp1 = siftp.keypoints(img1)
-    siftp = sift.SiftPlan(img2.shape, img2.dtype, devicetype="CPU")
-    kp2 = siftp.keypoints(img2)
+    siftp = sift.SiftPlan(im1.shape, im1.dtype, devicetype="GPU")
+    kp1 = siftp.keypoints(im1)
+    siftp = sift.SiftPlan(im2.shape, im2.dtype, devicetype="GPU")
+    kp2 = siftp.keypoints(im2)
 
     # Extract descriptors from keypoints
     des1 = np.array([k[4] for k in kp1])
@@ -59,15 +59,27 @@ def get_3d_points(im1, im2, K, plotMatches=False):
 
     F, mask = cv2.findFundamentalMat(src_pts,dst_pts,cv2.FM_LMEDS)
     matchesMask = mask.ravel().tolist()
+    # retval, H1, H2 = cv2.stereoRectifyUncalibrated(src_pts, dst_pts, F, (1000,1500))
+    # im1 = cv2.warpPerspective(im1, H1, (1500,1000))
+    # im2 = cv2.warpPerspective(im2, H2, (1500,1000))
+    # stereo = cv2.StereoBM_create(numDisparities=32, blockSize=11)
+    # disparity = stereo.compute(im1,im2)
+    # plt.imshow(disparity, 'gray')
+    # plt.figure()
+
+    # plt.imshow(cv2.warpPerspective(im1, H1, (1500,1000)), 'gray')
+    # plt.figure()
+    # plt.imshow(cv2.warpPerspective(im2, H2, (1500,1000)), 'gray')
+    # plt.show()
     E = np.matmul(K.T, np.matmul(F, K))
 
     # Plot matches if flag is set
     if plotMatches:
         plt.subplot(1,2,1)
-        plt.imshow(img1,'gray')
+        plt.imshow(im1,'gray')
         plt.scatter(src_pts[:,0], src_pts[:,1])
         plt.subplot(1,2,2)
-        plt.imshow(img2,'gray')
+        plt.imshow(im2,'gray')
         plt.scatter(dst_pts[:,0], dst_pts[:,1])
         plt.show()
 
@@ -117,9 +129,30 @@ if __name__ == '__main__':
     img1 = cv2.resize(img1,(1500,1000))
     img2 = cv2.resize(img2,(1500,1000))
 
-    K = np.load('calibration.npz')['K']
+    cam_calib = np.load('calibration.npz')
+    K = cam_calib['K']
+    distCoeffs = cam_calib['distortion']
 
-    points,err,R,t = get_3d_points(img1, img2, K, plotMatches=False)
+    h1,w1 = img1.shape[:2]
+    newcameramtx, roi = cv2.getOptimalNewCameraMatrix(K,distCoeffs,(w1,h1),1,(w1,h1))
+    img1_undistort = cv2.undistort(img1, K, distCoeffs, None, newcameramtx)
+    h2,w2 = img2.shape[:2]
+    newcameramtx, roi = cv2.getOptimalNewCameraMatrix(K,distCoeffs,(w2,h2),1,(w2,h2))
+    img2_undistort = cv2.undistort(img2, K, distCoeffs, None, newcameramtx)
+    # print roi
+    # plt.imshow(img1_undistort, 'gray')
+    # plt.show()
+
+    # crop the image
+    # x,y,w,h = roi
+    # img1_undistort = img1_undistort[y:y+h, x:x+w]
+    plt.figure()
+    plt.imshow(img1_undistort)
+    plt.figure()
+    plt.imshow(img2_undistort)
+    plt.show()
+
+    points,err,R,t = get_3d_points(img1_undistort, img2_undistort, K, plotMatches=True)
     np.savez('reconstruction_test', points=points, error=err, K=K, R=R, t=t)
 
     fig = plt.figure()
