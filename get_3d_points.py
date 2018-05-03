@@ -6,10 +6,12 @@ from mpl_toolkits.mplot3d import Axes3D
 
 # Get 3d points for given matches and matrices, return 3d points and 
 # reconstruction error
-def find_3d_points(P1, P2, matches):
+def find_3d_points(P1, P2, matches, plotReprojection=False):
 
     numMatches = matches.shape[0]
     points_3d = np.zeros((numMatches,3))
+    proj_points1 = np.zeros((numMatches,2))
+    proj_points2 = np.zeros((numMatches,2))
     errs = np.zeros((numMatches,1))
     for i,m in enumerate(matches):
         A = np.zeros((4, 4)) 
@@ -24,29 +26,52 @@ def find_3d_points(P1, P2, matches):
         U,S,Vh = np.linalg.svd(A)
         x = Vh.T[:,3]/Vh.T[3,3]
         points_3d[i,:] = x[0:3]
+        proj_points1[i,:] = P1[0:1,:].dot(x)/P1[2,:].dot(x)
+        proj_points2[i,:] = P2[0:1,:].dot(x)/P2[2,:].dot(x)
         rec_err_1 = np.sqrt((P1[0,:].dot(x)/P1[2,:].dot(x) - m[0][0])**2
                          + (P1[1,:].dot(x)/P1[2,:].dot(x) - m[0][1])**2)
         rec_err_2 = np.sqrt((P2[0,:].dot(x)/P2[2,:].dot(x) - m[1][0])**2
                          + (P2[1,:].dot(x)/P2[2,:].dot(x) - m[1][1])**2)
         errs[i] = 0.5*(rec_err_1 + rec_err_2)
     err = np.mean(errs)
+    
+    if plotReprojection:
+        ax1.scatter(proj_points1[:,0], proj_points1[:,1], s=0.5, color='red')
+        ax2.scatter(proj_points2[:,0], proj_points2[:,1], s=0.5, color='red')
     return points_3d, err
 
 def get_3d_points(im1, im2, K, plotMatches=False):
 
     # Initiate SIFT detector get keypoints in images
-    siftp = sift.SiftPlan(im1.shape, im1.dtype, devicetype="GPU")
-    kp1 = siftp.keypoints(im1)
-    siftp = sift.SiftPlan(im2.shape, im2.dtype, devicetype="GPU")
-    kp2 = siftp.keypoints(im2)
+#     siftp = sift.SiftPlan(img1.shape, img1.dtype, devicetype="CPU")
+#     kp1 = siftp.keypoints(img1)
+#     siftp = sift.SiftPlan(img2.shape, img2.dtype, devicetype="CPU")
+#     kp2 = siftp.keypoints(img2)
+    orb = cv2.ORB()
+    kp1 = orb.detect(im1, None)
+    kp2 = orb.detect(im2, None)
+    kp1, des1 = orb.compute(im1, kp1)
+    kp2, des2 = orb.compute(im2, kp2)
 
     # Extract descriptors from keypoints
-    des1 = np.array([k[4] for k in kp1])
-    des2 = np.array([k[4] for k in kp2])
+#     des1 = np.array([k[4] for k in kp1])
+#     des2 = np.array([k[4] for k in kp2])
+
+    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+    bf_matches = bf.match(des1,des2)
+    
+    matches = []
+    for m in bf_matches:
+        img1_idx = m.queryIdx
+        img2_idx = m.trainIdx
+        p1 = kp1[img1_idx].pt
+        p2 = kp2[img2_idx].pt
+        matches.append((p1,p2))
+    matches = np.array(matches)
 
     # Find matching keypoints in images
-    matchp = sift.MatchPlan()
-    matches = matchp.match(kp1,kp2)
+#     matchp = sift.MatchPlan()
+#     matches = matchp.match(kp1,kp2)
     src_pts, dst_pts = [], []
 
     # Use matches to find fundamental matrix and essential matrix
@@ -57,8 +82,20 @@ def get_3d_points(im1, im2, K, plotMatches=False):
     src_pts = np.array(src_pts)
     dst_pts = np.array(dst_pts)
 
-    F, mask = cv2.findFundamentalMat(src_pts,dst_pts,cv2.FM_LMEDS)
-    matchesMask = mask.ravel().tolist()
+    F, mask = cv2.findFundamentalMat(src_pts, dst_pts, cv2.FM_RANSAC)
+    
+    # Calculate residual errors
+    n = src_pts.shape[0]
+    x1_h = np.vstack((src_pts.T, np.ones((1,n))))
+    x2_h = np.vstack((dst_pts.T, np.ones((1,n))))
+    res_err = 0;
+    for i in range(n):
+        d12 = abs(x2_h[:,[i]].T.dot(F.dot(x1_h[:,[i]])))/np.linalg.norm(F.dot(x1_h[:,[i]]), 2)
+        d21 = abs(x1_h[:,[i]].T.dot(F.dot(x2_h[:,[i]])))/np.linalg.norm(F.dot(x2_h[:,[i]]), 2)
+        res_err += d12**2 + d21**2
+    print 'Residual error: ', res_err
+    
+#     matchesMask = mask.ravel().tolist()
     # retval, H1, H2 = cv2.stereoRectifyUncalibrated(src_pts, dst_pts, F, (1000,1500))
     # im1 = cv2.warpPerspective(im1, H1, (1500,1000))
     # im2 = cv2.warpPerspective(im2, H2, (1500,1000))
@@ -75,13 +112,10 @@ def get_3d_points(im1, im2, K, plotMatches=False):
 
     # Plot matches if flag is set
     if plotMatches:
-        plt.subplot(1,2,1)
-        plt.imshow(im1,'gray')
-        plt.scatter(src_pts[:,0], src_pts[:,1])
-        plt.subplot(1,2,2)
-        plt.imshow(im2,'gray')
-        plt.scatter(dst_pts[:,0], dst_pts[:,1])
-        plt.show()
+        ax1.imshow(im1,'gray')
+        ax1.scatter(src_pts[:,0], src_pts[:,1], s=0.5)
+        ax2.imshow(im2,'gray')
+        ax2.scatter(dst_pts[:,0], dst_pts[:,1], s=0.5)
 
     # Find all possible rotations and translations of camera 2
     U, S, Vh = np.linalg.svd(E)
@@ -118,14 +152,17 @@ def get_3d_points(im1, im2, K, plotMatches=False):
     P2 = np.matmul(K, np.concatenate((R[ri],t[ti].reshape((3,1))), axis=1))
 
     # Compute the 3D points with the final P2
-    points, err = find_3d_points(P1,P2,matches)
+    points, err = find_3d_points(P1,P2,matches, plotReprojection=True)
     return points, err, R[ri], t[ti]
 
 if __name__ == '__main__':
+    fig = plt.figure()
+    ax1 = fig.add_subplot(1,2,1)
+    ax2 = fig.add_subplot(1,2,2)
 
     # Load images and calibration matrix
-    img1 = cv2.imread('images/Reconstruction_Test/DSC_0466.JPG',0)
-    img2 = cv2.imread('images/Reconstruction_Test/DSC_0467.JPG',0)
+    img1 = cv2.imread('images/Reconstruction_Test/DSC_0470.JPG',0)
+    img2 = cv2.imread('images/Reconstruction_Test/DSC_0471.JPG',0)
     img1 = cv2.resize(img1,(1500,1000))
     img2 = cv2.resize(img2,(1500,1000))
 
@@ -146,16 +183,23 @@ if __name__ == '__main__':
     # crop the image
     # x,y,w,h = roi
     # img1_undistort = img1_undistort[y:y+h, x:x+w]
-    plt.figure()
-    plt.imshow(img1_undistort)
-    plt.figure()
-    plt.imshow(img2_undistort)
-    plt.show()
+#     plt.figure()
+#     plt.imshow(img1_undistort)
+#     plt.figure()
+#     plt.imshow(img2_undistort)
 
-    points,err,R,t = get_3d_points(img1_undistort, img2_undistort, K, plotMatches=True)
+    points, err, R, t = get_3d_points(img1_undistort, img2_undistort, newcameramtx, plotMatches=True)
+    print 'Reconstruction error: ', err
     np.savez('reconstruction_test', points=points, error=err, K=K, R=R, t=t)
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(points[:,0], points[:,1], zs=points[:,2])
+    ax.scatter(points[:,0], points[:,1], zs=points[:,2], s=0.5)
+    ax.set_xlabel('X Label')
+    ax.set_ylabel('Y Label')
+    ax.set_zlabel('Z Label')
+    ax.set_xlim3d(-2.5, 2.5)
+    ax.set_ylim3d(-2.5,2.5)
+    ax.set_zlim3d(0,5)
     plt.show()
+    
