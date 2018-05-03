@@ -26,8 +26,8 @@ def find_3d_points(P1, P2, matches, plotReprojection=False):
         U,S,Vh = np.linalg.svd(A)
         x = Vh.T[:,3]/Vh.T[3,3]
         points_3d[i,:] = x[0:3]
-        proj_points1[i,:] = P1[0:1,:].dot(x)/P1[2,:].dot(x)
-        proj_points2[i,:] = P2[0:1,:].dot(x)/P2[2,:].dot(x)
+        proj_points1[i,:] = P1[0:2,:].dot(x)/P1[2,:].dot(x)
+        proj_points2[i,:] = P2[0:2,:].dot(x)/P2[2,:].dot(x)
         rec_err_1 = np.sqrt((P1[0,:].dot(x)/P1[2,:].dot(x) - m[0][0])**2
                          + (P1[1,:].dot(x)/P1[2,:].dot(x) - m[0][1])**2)
         rec_err_2 = np.sqrt((P2[0,:].dot(x)/P2[2,:].dot(x) - m[1][0])**2
@@ -48,14 +48,12 @@ def get_3d_points(im1, im2, K, plotMatches=False):
 #     siftp = sift.SiftPlan(img2.shape, img2.dtype, devicetype="CPU")
 #     kp2 = siftp.keypoints(img2)
     
-#     orb = cv2.ORB_create()
-#     kp1 = orb.detect(im1, None)
-#     kp2 = orb.detect(im2, None)
-#     kp1, des1 = orb.compute(im1, kp1)
-#     kp2, des2 = orb.compute(im2, kp2)
+    orb = cv2.ORB_create()
+    kp1 = orb.detect(im1, None)
+    kp2 = orb.detect(im2, None)
+    kp1, des1 = orb.compute(im1, kp1)
+    kp2, des2 = orb.compute(im2, kp2)
     
-#     sift = cv2.xfeatures2d.SIFT_create()
-
     # Initiate SIFT detector
     sift = cv2.xfeatures2d.SIFT_create()
     
@@ -71,7 +69,7 @@ def get_3d_points(im1, im2, K, plotMatches=False):
     good = []
     for m,n in matches:
         if m.distance < 0.75*n.distance:
-            good.append([m])
+            good.append(m)
 
     # Extract descriptors from keypoints
 #     des1 = np.array([k[4] for k in kp1])
@@ -81,11 +79,10 @@ def get_3d_points(im1, im2, K, plotMatches=False):
 #     bf_matches = bf.match(des1,des2)
 #     bf_matches = sorted(bf_matches, key = lambda x:x.distance)
 #     bf_matches = bf_matches[:10]
-    print kp1
-    draw_matches(im1,kp1,im2,kp2,good)
+    draw_matches(im2,kp2,im1,kp1,good)
     
     matches = []
-    for m in bf_matches:
+    for m in good:
         img1_idx = m.queryIdx
         img2_idx = m.trainIdx
         p1 = kp1[img1_idx].pt
@@ -149,6 +146,10 @@ def get_3d_points(im1, im2, K, plotMatches=False):
                 -np.matmul(Vh.T, np.linalg.inv(np.matmul(U,R90.T))).T,
                 np.matmul(Vh.T, np.linalg.inv(np.matmul(U,R90))).T,
                 -np.matmul(Vh.T, np.linalg.inv(np.matmul(U,R90))).T])
+#     R = np.array([np.matmul(U, np.matmul(R90, Vh.T)),
+#                 -np.matmul(U, np.matmul(R90, Vh.T)),
+#                 np.matmul(U, np.matmul(R90.T, Vh.T)),
+#                 -np.matmul(U, np.matmul(R90.T, Vh.T))])
 
     # Construct P1 for camera 1
     Rt1 = np.concatenate((np.eye(3),np.zeros((3,1))), axis=1)
@@ -176,7 +177,7 @@ def get_3d_points(im1, im2, K, plotMatches=False):
     P2 = np.matmul(K, np.concatenate((R[ri],t[ti].reshape((3,1))), axis=1))
 
     # Compute the 3D points with the final P2
-    points, err = find_3d_points(P1,P2,matches, plotReprojection=False)
+    points, err = find_3d_points(P1,P2,matches, plotReprojection=True)
     return points, err, R[ri], t[ti]
 
 def draw_matches(img1, kp1, img2, kp2, matches, color=None): 
@@ -227,7 +228,6 @@ def draw_matches(img1, kp1, img2, kp2, matches, color=None):
     
     plt.figure(figsize=(15,15))
     plt.imshow(new_img,'gray')
-    plt.show()
 
 if __name__ == '__main__':
     fig = plt.figure()
@@ -235,8 +235,10 @@ if __name__ == '__main__':
     ax2 = fig.add_subplot(1,2,2)
 
     # Load images and calibration matrix
-    img1 = cv2.imread('images/Mouthwash/DSC_0590.JPG',0)
-    img2 = cv2.imread('images/Mouthwash/DSC_0591.JPG',0)
+#     img1 = cv2.imread('images/Mouthwash/DSC_0590.JPG',0)
+#     img2 = cv2.imread('images/Mouthwash/DSC_0591.JPG',0)
+    img1 = cv2.imread('images/library1.jpg',0)
+    img2 = cv2.imread('images/library1.jpg',0)
     img1 = cv2.resize(img1,(1500,1000))
     img2 = cv2.resize(img2,(1500,1000))
 
@@ -247,8 +249,6 @@ if __name__ == '__main__':
     h1,w1 = img1.shape[:2]
     newcameramtx, roi = cv2.getOptimalNewCameraMatrix(K,distCoeffs,(w1,h1),1,(w1,h1))
     img1_undistort = cv2.undistort(img1, K, distCoeffs, None, newcameramtx)
-    h2,w2 = img2.shape[:2]
-    newcameramtx, roi = cv2.getOptimalNewCameraMatrix(K,distCoeffs,(w2,h2),1,(w2,h2))
     img2_undistort = cv2.undistort(img2, K, distCoeffs, None, newcameramtx)
     # print roi
     # plt.imshow(img1_undistort, 'gray')
@@ -263,7 +263,10 @@ if __name__ == '__main__':
 #     plt.imshow(img2_undistort)
 
 #     points, err, R, t = get_3d_points(img1_undistort, img2_undistort, newcameramtx, plotMatches=True)
-    points, err, R, t = get_3d_points(img1, img2, newcameramtx, plotMatches=True)
+
+    K = np.array([[-580., 0., 258.], [0., -539., 204.], [0., 0., 1.]])
+
+    points, err, R, t = get_3d_points(img1, img2, K, plotMatches=True)
     print 'Reconstruction error: ', err
     np.savez('reconstruction_test', points=points, error=err, K=K, R=R, t=t)
 
