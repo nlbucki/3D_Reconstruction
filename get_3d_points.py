@@ -36,8 +36,8 @@ def find_3d_points(P1, P2, matches, plotReprojection=False):
     err = np.mean(errs)
     
     if plotReprojection:
-        ax1.scatter(proj_points1[:,0], proj_points1[:,1], s=0.5, color='red')
-        ax2.scatter(proj_points2[:,0], proj_points2[:,1], s=0.5, color='red')
+        ax1.scatter(proj_points1[:,0], proj_points1[:,1], color='red')
+        ax2.scatter(proj_points2[:,0], proj_points2[:,1], color='red')
     return points_3d, err
 
 def get_3d_points(im1, im2, K, plotMatches=False):
@@ -68,7 +68,7 @@ def get_3d_points(im1, im2, K, plotMatches=False):
     # Apply ratio test
     good = []
     for m,n in matches:
-        if m.distance < 0.75*n.distance:
+        if m.distance < 0.7*n.distance:
             good.append(m)
 
     # Extract descriptors from keypoints
@@ -134,9 +134,9 @@ def get_3d_points(im1, im2, K, plotMatches=False):
     # Plot matches if flag is set
     if plotMatches:
         ax1.imshow(im1,'gray')
-        ax1.scatter(src_pts[:,0], src_pts[:,1], s=0.5)
+        ax1.scatter(src_pts[:,0], src_pts[:,1])
         ax2.imshow(im2,'gray')
-        ax2.scatter(dst_pts[:,0], dst_pts[:,1], s=0.5)
+        ax2.scatter(dst_pts[:,0], dst_pts[:,1])
 
     # Find all possible rotations and translations of camera 2
     U, S, Vh = np.linalg.svd(E)
@@ -237,8 +237,8 @@ if __name__ == '__main__':
     # Load images and calibration matrix
 #     img1 = cv2.imread('images/Mouthwash/DSC_0590.JPG',0)
 #     img2 = cv2.imread('images/Mouthwash/DSC_0591.JPG',0)
-    img1 = cv2.imread('images/library1.jpg',0)
-    img2 = cv2.imread('images/library1.jpg',0)
+    img1 = cv2.imread('images/Test/DSC_0488.JPG',0)
+    img2 = cv2.imread('images/Test/DSC_0489.JPG',0)
     img1 = cv2.resize(img1,(1500,1000))
     img2 = cv2.resize(img2,(1500,1000))
 
@@ -262,11 +262,9 @@ if __name__ == '__main__':
 #     plt.figure()
 #     plt.imshow(img2_undistort)
 
-#     points, err, R, t = get_3d_points(img1_undistort, img2_undistort, newcameramtx, plotMatches=True)
+    points, err, R, t = get_3d_points(img1_undistort, img2_undistort, newcameramtx, plotMatches=True)
 
-    K = np.array([[-580., 0., 258.], [0., -539., 204.], [0., 0., 1.]])
-
-    points, err, R, t = get_3d_points(img1, img2, K, plotMatches=True)
+#     points, err, R, t = get_3d_points(img1, img2, K, plotMatches=True)
     print 'Reconstruction error: ', err
     np.savez('reconstruction_test', points=points, error=err, K=K, R=R, t=t)
 
