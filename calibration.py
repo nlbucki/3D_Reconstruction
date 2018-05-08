@@ -13,7 +13,7 @@ objp[:,:2] = np.mgrid[0:8,0:6].T.reshape(-1,2)*28.5
 objpoints = [] # 3d point in real world space
 imgpoints = [] # 2d points in image plane.
 
-images = glob.glob('./images/Camera_Calibration/*.JPG')
+images = glob.glob('./Camera_Calibration/*.JPG')
  
 for fname in images:
     print fname
