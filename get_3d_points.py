@@ -3,6 +3,7 @@ import cv2
 import silx.image.sift as sift
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from py3dmath import Vec3, Rotation
 
 # Get 3d points for given matches and matrices, return 3d points and 
 # reconstruction error
@@ -175,6 +176,12 @@ def get_3d_points(im1, im2, K, plotMatches=False):
 
     ti,ri = np.unravel_index(np.argmax(num_points), num_points.shape)
     P2 = np.matmul(K, np.concatenate((R[ri],t[ti].reshape((3,1))), axis=1))
+    
+    RotMat = Rotation.from_rotation_matrix(R[ri])
+    rotVec = RotMat.to_rotation_vector()
+    print 'Rotation axis: ', rotVec/rotVec.norm2()
+    print 'Rotation angle: ', rotVec.norm2()
+    print 'Translation: ', t[ti]
 
     # Compute the 3D points with the final P2
     points, err = find_3d_points(P1,P2,matches, plotReprojection=True)
@@ -237,13 +244,20 @@ if __name__ == '__main__':
     # Load images and calibration matrix
 #     img1 = cv2.imread('images/Mouthwash/DSC_0590.JPG',0)
 #     img2 = cv2.imread('images/Mouthwash/DSC_0591.JPG',0)
-    img1 = cv2.imread('images/Test/DSC_0488.JPG',0)
-    img2 = cv2.imread('images/Test/DSC_0489.JPG',0)
+#     img1 = cv2.imread('images/Test/DSC_0488.JPG',0)
+#     img2 = cv2.imread('images/Test/DSC_0489.JPG',0)
+#     img1 = cv2.imread('images/Transparent_Objects/rice/DSC_0481.JPG',0)
+#     img2 = cv2.imread('images/Transparent_Objects/rice/DSC_0482.JPG',0)
+#     img1 = cv2.imread('images/Cup_V2/Cup1.JPG',0)
+#     img2 = cv2.imread('images/Cup_V2/Cup2.JPG',0)
+    img1 = cv2.imread('images/Boot_V2/Boot1.jpg',0)
+    img2 = cv2.imread('images/Boot_V2/Boot2.jpg',0)
     img1 = cv2.resize(img1,(1500,1000))
     img2 = cv2.resize(img2,(1500,1000))
 
     cam_calib = np.load('calibration.npz')
     K = cam_calib['K']
+    print 'K: ', K
     distCoeffs = cam_calib['distortion']
 
     h1,w1 = img1.shape[:2]
@@ -262,9 +276,9 @@ if __name__ == '__main__':
 #     plt.figure()
 #     plt.imshow(img2_undistort)
 
-    points, err, R, t = get_3d_points(img1_undistort, img2_undistort, newcameramtx, plotMatches=True)
+#     points, err, R, t = get_3d_points(img1_undistort, img2_undistort, newcameramtx, plotMatches=True)
 
-#     points, err, R, t = get_3d_points(img1, img2, K, plotMatches=True)
+    points, err, R, t = get_3d_points(img1, img2, K, plotMatches=True)
     print 'Reconstruction error: ', err
     np.savez('reconstruction_test', points=points, error=err, K=K, R=R, t=t)
 
