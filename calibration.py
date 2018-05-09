@@ -20,7 +20,7 @@ images = glob.glob('./images/Camera_Calibration4/*.JPG')
 for fname in images:
     print fname
     img = cv2.imread(fname)
-    img = cv2.resize(img, (1500,1000))
+    img = cv2.resize(img, (672,448))
     gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 
     # Find the chess board corners
@@ -36,11 +36,15 @@ for fname in images:
     cv2.namedWindow('img', cv2.WINDOW_NORMAL)
     cv2.drawChessboardCorners(img, (gridx,gridy), corners, ret)
     cv2.imshow('img', img)
-    cv2.waitKey()
+    # cv2.waitKey()
  
 cv2.destroyAllWindows()
 
 error, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1],None,None)
+
+# Resize calibration matrix to match 448 x 448 image
+mtx[0,2] = 224
+mtx[1,2] = 224
 np.savez('calibration.npz', error=error, K=mtx, distortion=dist)
 print error
 print mtx

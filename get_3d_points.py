@@ -80,7 +80,7 @@ def get_3d_points(im1, im2, K, plotMatches=False):
 #     bf_matches = bf.match(des1,des2)
 #     bf_matches = sorted(bf_matches, key = lambda x:x.distance)
 #     bf_matches = bf_matches[:10]
-    draw_matches(im2,kp2,im1,kp1,good)
+    draw_matches(cv2.cvtColor(img2_color, cv2.COLOR_BGR2RGB),kp2,cv2.cvtColor(img1_color, cv2.COLOR_BGR2RGB),kp1,good)
     
     matches = []
     for m in good:
@@ -134,9 +134,9 @@ def get_3d_points(im1, im2, K, plotMatches=False):
 
     # Plot matches if flag is set
     if plotMatches:
-        ax1.imshow(im1,'gray')
+        ax1.imshow(cv2.cvtColor(img1_color, cv2.COLOR_BGR2RGB))
         ax1.scatter(src_pts[:,0], src_pts[:,1])
-        ax2.imshow(im2,'gray')
+        ax2.imshow(cv2.cvtColor(img2_color, cv2.COLOR_BGR2RGB))
         ax2.scatter(dst_pts[:,0], dst_pts[:,1])
 
     # Find all possible rotations and translations of camera 2
@@ -234,7 +234,7 @@ def draw_matches(img1, kp1, img2, kp2, matches, color=None):
         cv2.circle(new_img, end2, r, c, thickness)
     
     plt.figure(figsize=(15,15))
-    plt.imshow(new_img,'gray')
+    plt.imshow(new_img)
 
 if __name__ == '__main__':
     fig = plt.figure()
@@ -250,10 +250,20 @@ if __name__ == '__main__':
 #     img2 = cv2.imread('images/Transparent_Objects/rice/DSC_0482.JPG',0)
 #     img1 = cv2.imread('images/Cup_V2/Cup1.JPG',0)
 #     img2 = cv2.imread('images/Cup_V2/Cup2.JPG',0)
-    img1 = cv2.imread('images/Boot_V2/Boot1.jpg',0)
-    img2 = cv2.imread('images/Boot_V2/Boot2.jpg',0)
-    img1 = cv2.resize(img1,(1500,1000))
-    img2 = cv2.resize(img2,(1500,1000))
+#     img1 = cv2.imread('images/Boot_V2/Boot1.jpg',0)
+#     img2 = cv2.imread('images/Boot_V2/Boot2.jpg',0)
+#     img1 = cv2.resize(img1,(1500,1000))
+#     img2 = cv2.resize(img2,(1500,1000))
+
+
+#     img1 = cv2.imread('new_images/boot/DSC_0724.JPG',0)
+#     img2 = cv2.imread('new_images/boot/DSC_0725.JPG',0)
+#     img1_color = cv2.imread('new_images/boot/DSC_0724.JPG')
+#     img2_color = cv2.imread('new_images/boot/DSC_0725.JPG')
+    img1 = cv2.imread('new_images/boot/DSC_0700.JPG',0)
+    img2 = cv2.imread('new_images/boot/DSC_0701.JPG',0)
+    img1_color = cv2.imread('new_images/boot/DSC_0700.JPG')
+    img2_color = cv2.imread('new_images/boot/DSC_0701.JPG')
 
     cam_calib = np.load('calibration.npz')
     K = cam_calib['K']
@@ -276,20 +286,20 @@ if __name__ == '__main__':
 #     plt.figure()
 #     plt.imshow(img2_undistort)
 
-#     points, err, R, t = get_3d_points(img1_undistort, img2_undistort, newcameramtx, plotMatches=True)
+    points, err, R, t = get_3d_points(img1_undistort, img2_undistort, newcameramtx, plotMatches=True)
 
-    points, err, R, t = get_3d_points(img1, img2, K, plotMatches=True)
+#     points, err, R, t = get_3d_points(img1, img2, K, plotMatches=True)
     print 'Reconstruction error: ', err
     np.savez('reconstruction_test', points=points, error=err, K=K, R=R, t=t)
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(points[:,0], points[:,1], zs=points[:,2], s=0.5)
+    ax.scatter(points[:,0], points[:,1], zs=points[:,2])
     ax.set_xlabel('X Label')
     ax.set_ylabel('Y Label')
     ax.set_zlabel('Z Label')
-    ax.set_xlim3d(-2.5, 2.5)
-    ax.set_ylim3d(-2.5,2.5)
-    ax.set_zlim3d(0,5)
+    ax.set_xlim3d(-0.5, 0.5)
+    ax.set_ylim3d(-0.5, 0.5)
+    ax.set_zlim3d(0,1)
     plt.show()
     
